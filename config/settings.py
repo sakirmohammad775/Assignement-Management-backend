@@ -18,10 +18,11 @@ SECRET_KEY = os.getenv("SECRET_KEY")
 # DEBUG = True
 DEBUG = os.getenv("DEBUG", "False").lower() == "true"
 
-ALLOWED_HOSTS = os.getenv(
-    "ALLOWED_HOSTS",
-    "localhost,127.0.0.1",
-).split(",")
+ALLOWED_HOSTS = [
+    host.strip()
+    for host in os.getenv("ALLOWED_HOSTS", "").split(",")
+    if host.strip()
+]
 
 
 # Application definition
@@ -216,8 +217,3 @@ CSRF_COOKIE_SECURE = (
     os.getenv("CSRF_COOKIE_SECURE", "False").lower()
     == "true"
 )
-print("=== PRODUCTION DEBUG ===")
-print("DEBUG:", DEBUG)
-print("ALLOWED_HOSTS:", ALLOWED_HOSTS)
-print("DB_HOST:", os.getenv("DB_HOST"))
-print("========================")
