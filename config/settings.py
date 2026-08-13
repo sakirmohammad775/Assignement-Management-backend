@@ -216,3 +216,8 @@ CSRF_COOKIE_SECURE = (
     os.getenv("CSRF_COOKIE_SECURE", "False").lower()
     == "true"
 )
+print("=== PRODUCTION DEBUG ===")
+print("DEBUG:", DEBUG)
+print("ALLOWED_HOSTS:", ALLOWED_HOSTS)
+print("DB_HOST:", os.getenv("DB_HOST"))
+print("========================")
