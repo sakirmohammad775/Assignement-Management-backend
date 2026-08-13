@@ -83,9 +83,6 @@ class AssignmentSerializer(serializers.ModelSerializer):
         return attrs
     
 
-
-
-
 class SubmissionSerializer(serializers.ModelSerializer):
     student_name = serializers.CharField(
         source="student.username",
@@ -94,6 +91,21 @@ class SubmissionSerializer(serializers.ModelSerializer):
 
     assignment_title = serializers.CharField(
         source="assignment.title",
+        read_only=True,
+    )
+
+    teacher_name = serializers.CharField(
+        source="assignment.teacher.username",
+        read_only=True,
+    )
+
+    class_name = serializers.CharField(
+        source="assignment.class_group.name",
+        read_only=True,
+    )
+
+    subject_name = serializers.CharField(
+        source="assignment.subject.name",
         read_only=True,
     )
 
@@ -109,6 +121,9 @@ class SubmissionSerializer(serializers.ModelSerializer):
             "id",
             "assignment",
             "assignment_title",
+            "teacher_name",
+            "class_name",
+            "subject_name",
             "student",
             "student_name",
             "answer",
@@ -158,3 +173,4 @@ class SubmissionSerializer(serializers.ModelSerializer):
             )
 
         return assignment
+    

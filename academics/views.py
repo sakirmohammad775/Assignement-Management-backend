@@ -1,5 +1,5 @@
 from rest_framework import viewsets
-from rest_framework.permissions import IsAuthenticated
+from drf_spectacular.utils import extend_schema, OpenApiParameter
 
 from .models import (
     Class,
@@ -17,36 +17,87 @@ from .serializers import (
     StudentClassSerializer,
 )
 
+from accounts.permissions import (
+    IsAdmin,
+    IsTeacherOrAdmin,
+)
+
+
+from rest_framework.permissions import IsAuthenticated
+from accounts.permissions import IsAdmin, IsTeacherOrAdmin
+
 
 class ClassViewSet(viewsets.ModelViewSet):
-    queryset = Class.objects.all()
+    queryset = Class.objects.all().order_by("name")
     serializer_class = ClassSerializer
-    permission_classes = [IsAuthenticated]
+
+    def get_permissions(self):
+        if self.action in [
+            "create",
+            "update",
+            "partial_update",
+            "destroy",
+        ]:
+            return [IsAdmin()]
+
+        return [IsTeacherOrAdmin()]
 
 
 class SubjectViewSet(viewsets.ModelViewSet):
-    queryset = Subject.objects.all()
+    queryset = Subject.objects.all().order_by("name")
     serializer_class = SubjectSerializer
-    permission_classes = [IsAuthenticated]
+
+    def get_permissions(self):
+        if self.action in [
+            "create",
+            "update",
+            "partial_update",
+            "destroy",
+        ]:
+            return [IsAdmin()]
+
+        return [IsTeacherOrAdmin()]
 
 
 class TeacherClassViewSet(viewsets.ModelViewSet):
-    queryset = TeacherClass.objects.select_related(
-        "teacher",
-        "class_group",
-    )
     serializer_class = TeacherClassSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsTeacherOrAdmin]
+
+    def get_queryset(self):
+        user = self.request.user
+
+        queryset = TeacherClass.objects.select_related(
+            "teacher",
+            "class_group",
+        )
+
+        # Teacher → only their own classes
+        if user.role == "TEACHER":
+            return queryset.filter(teacher=user)
+
+        # Admin → all teacher/class assignments
+        return queryset
 
 
 class TeacherSubjectViewSet(viewsets.ModelViewSet):
-    queryset = TeacherSubject.objects.select_related(
-        "teacher",
-        "subject",
-        "class_group",
-    )
     serializer_class = TeacherSubjectSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsTeacherOrAdmin]
+
+    def get_queryset(self):
+        user = self.request.user
+
+        queryset = TeacherSubject.objects.select_related(
+            "teacher",
+            "subject",
+            "class_group",
+        )
+
+        # Teacher → only their own subjects
+        if user.role == "TEACHER":
+            return queryset.filter(teacher=user)
+
+        # Admin → all teacher/subject assignments
+        return queryset
 
 
 class StudentClassViewSet(viewsets.ModelViewSet):
@@ -55,4 +106,4 @@ class StudentClassViewSet(viewsets.ModelViewSet):
         "class_group",
     )
     serializer_class = StudentClassSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAdmin]

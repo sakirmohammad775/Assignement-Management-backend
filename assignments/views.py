@@ -1,4 +1,4 @@
-from rest_framework import status, viewsets,serializers
+from rest_framework import status, viewsets, serializers
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -6,9 +6,10 @@ from rest_framework.exceptions import PermissionDenied
 from accounts.permissions import IsStudent, IsTeacher
 from .models import Assignment, Submission
 from .serializers import (
-    AssignmentSerializer,   
+    AssignmentSerializer,
     SubmissionSerializer,
 )
+from rest_framework import status
 
 class AssignmentViewSet(viewsets.ModelViewSet):
     serializer_class = AssignmentSerializer
@@ -29,9 +30,7 @@ class AssignmentViewSet(viewsets.ModelViewSet):
         user = self.request.user
 
         if user.role == "TEACHER":
-            return Assignment.objects.filter(
-                teacher=user
-            ).select_related(
+            return Assignment.objects.filter(teacher=user).select_related(
                 "teacher",
                 "class_group",
                 "subject",
@@ -69,9 +68,7 @@ class AssignmentViewSet(viewsets.ModelViewSet):
         assignment = self.get_object()
 
         if assignment.teacher != self.request.user:
-            raise PermissionDenied(
-                 "You can only modify your own assignments."
-        )
+            raise PermissionDenied("You can only modify your own assignments.")
 
         serializer.save()
 
@@ -86,9 +83,7 @@ class AssignmentViewSet(viewsets.ModelViewSet):
 
         assignment.delete()
 
-        return Response(
-            status=status.HTTP_204_NO_CONTENT
-        )
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(
         detail=True,
@@ -104,12 +99,6 @@ class AssignmentViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_403_FORBIDDEN,
             )
 
-        if assignment.status == Assignment.Status.PUBLISHED:
-            return Response(
-                {"detail": "Assignment is already published."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
         assignment.status = Assignment.Status.PUBLISHED
         assignment.save(update_fields=["status", "updated_at"])
 
@@ -119,7 +108,32 @@ class AssignmentViewSet(viewsets.ModelViewSet):
                 context={"request": request},
             ).data
         )
-        
+
+    @action(
+        detail=True,
+        methods=["post"],
+        permission_classes=[IsTeacher],
+    )
+    def draft(self, request, pk=None):
+        assignment = self.get_object()
+
+        if assignment.teacher != request.user:
+            return Response(
+                {"detail": "You can only move your own assignments to draft."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        assignment.status = Assignment.Status.DRAFT
+        assignment.save(update_fields=["status", "updated_at"])
+
+        return Response(
+            AssignmentSerializer(
+                assignment,
+                context={"request": request},
+            ).data
+        )
+
+
 class SubmissionViewSet(viewsets.ModelViewSet):
     serializer_class = SubmissionSerializer
 
@@ -133,17 +147,13 @@ class SubmissionViewSet(viewsets.ModelViewSet):
         user = self.request.user
 
         if user.role == "STUDENT":
-            return Submission.objects.filter(
-                student=user
-            ).select_related(
+            return Submission.objects.filter(student=user).select_related(
                 "assignment",
                 "student",
             )
 
         if user.role == "TEACHER":
-            return Submission.objects.filter(
-                assignment__teacher=user
-            ).select_related(
+            return Submission.objects.filter(assignment__teacher=user).select_related(
                 "assignment",
                 "student",
             )
@@ -177,49 +187,38 @@ class SubmissionViewSet(viewsets.ModelViewSet):
         submission = self.get_object()
 
         if submission.student != self.request.user:
-            raise PermissionDenied(
-                "You can only update your own submission."
-            )
+            raise PermissionDenied("You can only update your own submission.")
 
         if timezone.now() > submission.assignment.deadline:
-            raise serializers.ValidationError(
-                "The submission deadline has passed."
-            )
+            raise serializers.ValidationError("The submission deadline has passed.")
 
         if submission.status == Submission.Status.GRADED:
-            raise serializers.ValidationError(
-                "A graded submission cannot be updated."
-            )
+            raise serializers.ValidationError("A graded submission cannot be updated.")
 
         serializer.save()
-        
+
     @action(
-    detail=True,
-    methods=["post"],
-    permission_classes=[IsTeacher],
+        detail=True,
+        methods=["post"],
+        permission_classes=[IsTeacher],
     )
-    
-    
     def grade(self, request, pk=None):
         submission = self.get_object()
 
         if submission.assignment.teacher != request.user:
             return Response(
-            {
-                "detail": "You can only grade submissions "
-                "for your assignments."
-            },
-            status=status.HTTP_403_FORBIDDEN,
-        )
+                {"detail": "You can only grade submissions " "for your assignments."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
 
         marks = request.data.get("marks")
         feedback = request.data.get("feedback", "")
 
         if marks is None:
             return Response(
-            {"marks": "Marks are required."},
-            status=status.HTTP_400_BAD_REQUEST,
-        )
+                {"marks": "Marks are required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         try:
             marks = int(marks)
@@ -227,35 +226,34 @@ class SubmissionViewSet(viewsets.ModelViewSet):
             return Response(
                 {"marks": "Marks must be a number."},
                 status=status.HTTP_400_BAD_REQUEST,
-        )
+            )
 
         if marks < 0:
             return Response(
                 {"marks": "Marks cannot be negative."},
                 status=status.HTTP_400_BAD_REQUEST,
-        )
+            )
 
         if marks > submission.assignment.max_marks:
             return Response(
-            {
-                "marks": (
-                    f"Marks cannot exceed "
-                    f"{submission.assignment.max_marks}."
-                )
-            },
-            status=status.HTTP_400_BAD_REQUEST,
-        )
+                {
+                    "marks": (
+                        f"Marks cannot exceed " f"{submission.assignment.max_marks}."
+                    )
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         submission.marks = marks
         submission.feedback = feedback
         submission.status = Submission.Status.GRADED
 
         submission.save(
-        update_fields=[
-            "marks",
-            "feedback",
-            "status",
-            "updated_at",
+            update_fields=[
+                "marks",
+                "feedback",
+                "status",
+                "updated_at",
             ]
         )
 
@@ -263,5 +261,71 @@ class SubmissionViewSet(viewsets.ModelViewSet):
             SubmissionSerializer(
                 submission,
                 context={"request": request},
-                ).data
+            ).data
+        )
+
+    def get_queryset(self):
+        user = self.request.user
+
+        if user.role == "ADMIN":
+            return Assignment.objects.all().select_related(
+                "teacher",
+                "class_group",
+                "subject",
             )
+
+        if user.role == "TEACHER":
+            return Assignment.objects.filter(teacher=user).select_related(
+                "teacher",
+                "class_group",
+                "subject",
+            )
+
+        if user.role == "STUDENT":
+            try:
+                student_class = user.student_class.class_group
+            except Exception:
+                return Assignment.objects.none()
+
+            return Assignment.objects.filter(
+                class_group=student_class,
+                status=Assignment.Status.PUBLISHED,
+            ).select_related(
+                "teacher",
+                "class_group",
+                "subject",
+            )
+
+        return Assignment.objects.none()
+
+    def get_queryset(self):
+        user = self.request.user
+
+        if user.role == "STUDENT":
+            return Submission.objects.filter(student=user).select_related(
+                "assignment",
+                "assignment__teacher",
+                "assignment__class_group",
+                "assignment__subject",
+                "student",
+            )
+
+        if user.role == "TEACHER":
+            return Submission.objects.filter(assignment__teacher=user).select_related(
+                "assignment",
+                "assignment__teacher",
+                "assignment__class_group",
+                "assignment__subject",
+                "student",
+            )
+
+        if user.role == "ADMIN":
+            return Submission.objects.all().select_related(
+                "assignment",
+                "assignment__teacher",
+                "assignment__class_group",
+                "assignment__subject",
+                "student",
+            )
+
+        return Submission.objects.none()

@@ -10,15 +10,35 @@ from .models import (
 
 
 class ClassSerializer(serializers.ModelSerializer):
+    student_count = serializers.IntegerField(
+        source="students.count",
+        read_only=True,
+    )
+
     class Meta:
         model = Class
-        fields = ["id", "name", "code"]
+        fields = [
+            "id",
+            "name",
+            "code",
+            "student_count",
+        ]
 
 
 class SubjectSerializer(serializers.ModelSerializer):
+    teacher_count = serializers.IntegerField(
+        source="teacher_assignments.count",
+        read_only=True,
+    )
+
     class Meta:
         model = Subject
-        fields = ["id", "name", "code"]
+        fields = [
+            "id",
+            "name",
+            "code",
+            "teacher_count",
+        ]
 
 
 class TeacherClassSerializer(serializers.ModelSerializer):
@@ -26,6 +46,7 @@ class TeacherClassSerializer(serializers.ModelSerializer):
         source="teacher.username",
         read_only=True,
     )
+
     class_name = serializers.CharField(
         source="class_group.name",
         read_only=True,
@@ -47,10 +68,12 @@ class TeacherSubjectSerializer(serializers.ModelSerializer):
         source="teacher.username",
         read_only=True,
     )
+
     subject_name = serializers.CharField(
         source="subject.name",
         read_only=True,
     )
+
     class_name = serializers.CharField(
         source="class_group.name",
         read_only=True,
@@ -74,6 +97,7 @@ class StudentClassSerializer(serializers.ModelSerializer):
         source="student.username",
         read_only=True,
     )
+
     class_name = serializers.CharField(
         source="class_group.name",
         read_only=True,
