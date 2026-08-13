@@ -10,6 +10,18 @@ from .serializers import (
     SubmissionSerializer,
 )
 from rest_framework import status
+from drf_spectacular.utils import extend_schema, OpenApiParameter
+from drf_spectacular.utils import extend_schema, OpenApiParameter
+
+@extend_schema(
+    parameters=[
+        OpenApiParameter(
+            name="id",
+            type=int,
+            location=OpenApiParameter.PATH,
+        )
+    ]
+)
 
 class AssignmentViewSet(viewsets.ModelViewSet):
     serializer_class = AssignmentSerializer
@@ -133,6 +145,15 @@ class AssignmentViewSet(viewsets.ModelViewSet):
             ).data
         )
 
+@extend_schema(
+    parameters=[
+        OpenApiParameter(
+            name="id",
+            type=int,
+            location=OpenApiParameter.PATH,
+        )
+    ]
+)
 
 class SubmissionViewSet(viewsets.ModelViewSet):
     serializer_class = SubmissionSerializer

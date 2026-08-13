@@ -58,7 +58,15 @@ class SubjectViewSet(viewsets.ModelViewSet):
 
         return [IsTeacherOrAdmin()]
 
-
+@extend_schema(
+    parameters=[
+        OpenApiParameter(
+            name="id",
+            type=int,
+            location=OpenApiParameter.PATH,
+        )
+    ]
+)
 class TeacherClassViewSet(viewsets.ModelViewSet):
     serializer_class = TeacherClassSerializer
     permission_classes = [IsTeacherOrAdmin]
@@ -78,6 +86,16 @@ class TeacherClassViewSet(viewsets.ModelViewSet):
         # Admin → all teacher/class assignments
         return queryset
 
+
+@extend_schema(
+    parameters=[
+        OpenApiParameter(
+            name="id",
+            type=int,
+            location=OpenApiParameter.PATH,
+        )
+    ]
+)
 
 class TeacherSubjectViewSet(viewsets.ModelViewSet):
     serializer_class = TeacherSubjectSerializer

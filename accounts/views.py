@@ -10,11 +10,15 @@ from academics.models import Class, StudentClass
 from .serializers import LoginSerializer, UserSerializer, AdminStudentSerializer
 from .permissions import IsAdmin
 from .models import User
-
+from drf_spectacular.utils import extend_schema
 
 class LoginView(APIView):
     permission_classes = [AllowAny]
 
+    @extend_schema(
+        request=LoginSerializer,
+        responses={200: UserSerializer},
+    )
     def post(self, request):
         serializer = LoginSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -84,6 +88,10 @@ class AdminStudentViewSet(viewsets.ModelViewSet):
 class AdminStudentClassView(APIView):
     permission_classes = [IsAdmin]
 
+    @extend_schema(
+        request=None,
+        responses={200: dict},
+    )
     def patch(self, request, student_id):
         try:
             student = User.objects.get(
